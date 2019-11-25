@@ -52,7 +52,7 @@
     "ws": "~>5.2.0"
   },
   "optionalDependencies": {
-    "node-webcrypto-ossl": "^1.0.39"
+    "node-webcrypto-ossl": "^1.0.48"
   },
   "devDependencies": {
     "aws-sdk": ">=2.153.0",
