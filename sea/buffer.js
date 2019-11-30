@@ -45,6 +45,7 @@
           }
           return buf
         }
+	console.log(input)
         const byteLength = input.byteLength // what is going on here? FOR MARTTI
         const length = input.byteLength ? input.byteLength : input.length
         if (length) {
