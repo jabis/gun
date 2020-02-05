@@ -11,7 +11,7 @@ Gun.chain.get = function(key, cb, as){
 		gun = gun.$;
 	} else
 	if(key instanceof Function){
-		if(true === cb){ return soul(this, key, cb, as) }
+		if(true === cb){ return soul(this, key, cb, as), this }
 		gun = this;
 		var at = gun._, root = at.root, tmp = root.now, ev;
 		as = cb || {};
@@ -32,12 +32,18 @@ Gun.chain.get = function(key, cb, as){
 	} else
 	if(tmp = rel.is(key)){
 		return this.get(tmp, cb, as);
+	} else
+	if(obj.is(key)){
+		gun = this;
+		if(tmp = ((tmp = key['#'])||empty)['='] || tmp){ gun = gun.get(tmp) }
+		gun._.lex = key;
+		return gun;
 	} else {
 		(as = this.chain())._.err = {err: Gun.log('Invalid get request!', key)}; // CLEAN UP
 		if(cb){ cb.call(as, as._.err) }
 		return as;
 	}
-	if(tmp = cat.stun){ // TODO: Refactor?
+	if(tmp = this._.stun){ // TODO: Refactor?
 		gun._.stun = gun._.stun || tmp;
 	}
 	if(cb && cb instanceof Function){
@@ -62,23 +68,27 @@ function cache(key, back){
 }
 function soul(gun, cb, opt, as){
 	var cat = gun._, acks = 0, tmp;
-	if(tmp = cat.soul){ return cb(tmp, as, cat), gun }
-	if(tmp = cat.link){ return cb(tmp, as, cat), gun }
-	gun.get(function(msg, ev){
-		if(u === msg.put && (tmp = (obj_map(cat.root.opt.peers, function(v,k,t){t(k)})||[]).length) && acks++ <= tmp){
+	if(tmp = cat.soul || cat.link || cat.dub){ return cb(tmp, as, cat) }
+	if(cat.jam){ return cat.jam.push([cb, as]) }
+	cat.jam = [[cb,as]];
+	gun.get(function go(msg, eve){
+		if(u === msg.put && (tmp = Object.keys(cat.root.opt.peers).length) && ++acks < tmp){
 			return;
 		}
-		ev.rid(msg);
-		var at = ((at = msg.$) && at._) || {};
-		tmp = at.link || at.soul || rel.is(msg.put) || node_soul(msg.put) || at.dub;
-		cb(tmp, as, msg, ev);
+		eve.rid(msg);
+		var at = ((at = msg.$) && at._) || {}, i = 0, as;
+		tmp = cat.jam; delete cat.jam; // tmp = cat.jam.splice(0, 100);
+		//if(tmp.length){ process.nextTick(function(){ go(msg, eve) }) }
+		while(as = tmp[i++]){ //Gun.obj.map(tmp, function(as, cb){
+			var cb = as[0], id; as = as[1];
+			cb && cb(id = at.link || at.soul || rel.is(msg.put) || node_soul(msg.put) || at.dub, as, msg, eve);
+		} //);
 	}, {out: {get: {'.':true}}});
 	return gun;
 }
 function use(msg){
 	var eve = this, as = eve.as, cat = as.at, root = cat.root, gun = msg.$, at = (gun||{})._ || {}, data = msg.put || at.put, tmp;
 	if((tmp = root.now) && eve !== tmp[as.now]){ return eve.to.next(msg) }
-	//console.log("USE:", cat.id, cat.soul, cat.has, cat.get, msg, root.mum);
 	//if(at.async && msg.root){ return }
 	//if(at.async === 1 && cat.async !== true){ return }
 	//if(root.stop && root.stop[at.id]){ return } root.stop && (root.stop[at.id] = true);
@@ -86,7 +96,7 @@ function use(msg){
 	//else if(!cat.async && msg.put !== at.put && root.stop && root.stop[at.id]){ return } root.stop && (root.stop[at.id] = true);
 
 
-	//root.stop && (root.stop.ID = root.stop.ID || Gun.text.random(2));
+	//root.stop && (root.stop.id = root.stop.id || Gun.text.random(2));
 	//if((tmp = root.stop) && (tmp = tmp[at.id] || (tmp[at.id] = {})) && tmp[cat.id]){ return } tmp && (tmp[cat.id] = true);
 	if(eve.seen && at.id && eve.seen[at.id]){ return eve.to.next(msg) }
 	//if((tmp = root.stop)){ if(tmp[at.id]){ return } tmp[at.id] = msg.root; } // temporary fix till a better solution?

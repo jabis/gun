@@ -6,23 +6,23 @@ var Gun;
   if(typeof window !== 'undefined'){ env = window }
   root = env.window? env.window : global;
   try{ env.window && root.localStorage && root.localStorage.clear() }catch(e){}
-  try{ require('fs').unlinkSync('data.json') }catch(e){}
-  //root.Gun = root.Gun || require('../gun');
+  try{ indexedDB.deleteDatabase('radatatest') }catch(e){}
   if(root.Gun){
     root.Gun = root.Gun;
     root.Gun.TESTING = true;
   } else {
+    try{ require('fs').unlinkSync('data.json') }catch(e){}
+    try{ require('../../lib/fsrm')('radatatest') }catch(e){}
     root.Gun = require('../../gun');
     root.Gun.TESTING = true;
     //require('../lib/file');
-    require('../lib/store');
-    require('../lib/rfs');
+    require('../../lib/store');
+    require('../../lib/rfs');
   }
 
-  if(root.Gun.SEA){
-    //Gun = root.Gun = root.Gun;
-  } else {
-    var expect = global.expect = require("../expect");
+  try{ var expect = global.expect = require("../expect") }catch(e){}
+
+  if(!root.Gun.SEA){
     require('../../sea.js');
   }
 }(this));
@@ -37,7 +37,14 @@ describe('SEA', function(){
   var gun;
   var pub;
   describe('Utility', function(){
-
+    it('generates aeskey from jwk', function(done) {
+      console.log("WARNING: THIS DOES NOT WORK IN BROWSER!!!! NEEDS FIX");
+      SEA.opt.aeskey('x','x').then(k => {
+        //console.log("DATA", k.data);
+        expect(k.data.toString('base64')).to.be('Xd6JaIf2dUybFb/jpEGuSAbfL96UABMR4IvxEGIuC74=')
+        done()
+      })
+    })
     it('quickstart', function(done){
       SEA.pair(function(pair){
       SEA.encrypt('hello self', pair, function(enc){
@@ -169,6 +176,16 @@ describe('SEA', function(){
       });});});});});});});});});});});});});});});});});});});});});});});});});});});
     })
     
+    /*it('DOESNT DECRYPT SCIENTIFIC NOTATION', function(done){
+      var pair, s, v;
+      SEA.pair(function(pair){
+      SEA.encrypt('4e2', pair, function(s){
+      SEA.decrypt(s, pair, function(v){
+      expect(400).to.be(v);
+      done();
+      });});});
+    })*/
+    
     it('legacy', function(done){ (async function(){
       var pw = 'test123';
       // https://cdn.jsdelivr.net/npm/gun@0.9.99999/sea.js !
@@ -296,12 +313,15 @@ describe('SEA', function(){
     })
 
     it('refresh login', function(done){
-      gun = Gun();
-      user = gun.user();
-      user.auth('carl', 'test123', function(ack){
-        expect(ack.err).to.not.be.ok();
-        done()
-      })
+      this.timeout(9000);
+      setTimeout(function(){
+        gun = Gun();
+        user = gun.user();
+        user.auth('carl', 'test123', function(ack){
+          expect(ack.err).to.not.be.ok();
+          done()
+        })
+      }, 800);
     })
 
     it('gun put JSON', function(done){
@@ -317,8 +337,48 @@ describe('SEA', function(){
         done();
       });
     })
+
+    it('set user ref should be found', function(done){
+      var gun = Gun();
+      var user = gun.user();
+      var msg = {what: 'hello world'};
+      user.create('zach', 'password');
+      gun.on('auth', function(){
+        var ref = user.get('who').get('all').set(msg);
+        user.get('who').get('said').set(ref);
+        user.get('who').get('said').map().once(function(data){
+          expect(data.what).to.be.ok();
+          done();
+        })
+      })
+    });
+
+    it('set user ref null override', function(done){
+      this.timeout(9000);
+      var gun = Gun();
+      var user = gun.user();
+      var msg = {what: 'hello world'};
+      user.create('xavier', 'password');
+      gun.on('auth', function(){
+        var ref = user.get('who').get('all').set(msg);
+        var tmp = ref._.dub || ref._.link;
+        setTimeout(function(){
+          user.get('who').put(1);
+          setTimeout(function(){
+            user.get('who').get('all').get(tmp).put({boom: 'ah'});
+            setTimeout(function(){
+              user.get('who').get('all').map().once(function(data){
+                expect(data).to.be.ok();
+                expect(data.what).to.not.be.ok();
+                done();
+              });
+            },9);
+          },9);
+        },9);
+      });
+    });
   });
 
 })
 
-})()
+}());
